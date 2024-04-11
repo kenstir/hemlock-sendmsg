@@ -15,7 +15,7 @@ import requests
 
 from oauth2client.service_account import ServiceAccountCredentials
 
-PROJECT_ID = '<YOUR-PROJECT-ID>'
+PROJECT_ID = 'test-fdfb4'
 BASE_URL = 'https://fcm.googleapis.com'
 FCM_ENDPOINT = 'v1/projects/' + PROJECT_ID + '/messages:send'
 FCM_URL = BASE_URL + '/' + FCM_ENDPOINT
@@ -86,7 +86,7 @@ def _build_override_message():
       }
     },
     'headers': {
-      'apns-priority': '10'
+      'apns-priority': '5'
     }
   }
 
