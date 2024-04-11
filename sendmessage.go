@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	firebase "firebase.google.com/go/v4"
@@ -23,7 +24,7 @@ func main() {
 		log.Fatalf("Failed to initialize Messaging: %s", err) 
 	}
 
-	_, err = fcmClient.Send(context.Background(), &messaging.Message{
+	response, err := fcmClient.Send(context.Background(), &messaging.Message{
 		Notification: &messaging.Notification{
 			Title:    "A nice notification title",
 			Body:     "A nice notification body",
@@ -33,4 +34,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to send notification: %s", err) 
 	}
+	fmt.Println("Successfully sent message, response:", response)
 }
