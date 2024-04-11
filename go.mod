@@ -1,4 +1,4 @@
-module kenstir.net/hemlock-notifier
+module kenstir.net/hemlock-sendmsg
 
 go 1.22.2
 
