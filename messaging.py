@@ -14,6 +14,7 @@ import json
 import requests
 
 from oauth2client.service_account import ServiceAccountCredentials
+from pprint import pprint
 
 PROJECT_ID = 'test-fdfb4'
 BASE_URL = 'https://fcm.googleapis.com'
@@ -29,7 +30,9 @@ def _get_access_token():
   """
   credentials = ServiceAccountCredentials.from_json_keyfile_name(
       'service-account.json', SCOPES)
+  pprint(credentials)
   access_token_info = credentials.get_access_token()
+  pprint(access_token_info)
   return access_token_info.access_token
 # [END retrieve_access_token]
 
