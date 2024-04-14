@@ -11,6 +11,10 @@ import (
 	"google.golang.org/api/option"
 )
 
+type ServiceData struct {
+	fcmClient *messaging.Client
+}
+
 // requireStringParam returns FormValue(param) or an error
 func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (string, error) {
 	value := r.FormValue(param)
@@ -23,26 +27,9 @@ func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (s
 	return value, nil
 }
 
-func sendMessage(_ string, token string, title string, body string) (string, error) {
-	// TODO: read credentialsFile from env var or command line
-	credentialsFile := "service-account.json"
-
-	// initialize FCM
-	opts := []option.ClientOption{option.WithCredentialsFile(credentialsFile)}
-	config := &firebase.Config{}
-	app, err := firebase.NewApp(context.Background(), config, opts...)
-	if err != nil {
-		log.Fatalf("error initializing app: %v\n", err)
-	}
-
-	// create a messaging client
-	fcmClient, err := app.Messaging(context.Background())
-	if err != nil {
-		log.Fatalf("Failed to initialize Messaging: %s", err) 
-	}
-
+func (srv *ServiceData) sendMessage(token string, title string, body string) (string, error) {
 	// send the message
-	response, err := fcmClient.Send(context.Background(), &messaging.Message{
+	response, err := srv.fcmClient.Send(context.Background(), &messaging.Message{
 		Notification: &messaging.Notification{
 			Title: title,
 			Body:  body,
@@ -56,7 +43,7 @@ func sendMessage(_ string, token string, title string, body string) (string, err
 	return response, nil
 }
 
-func sendHandler(w http.ResponseWriter, r *http.Request) {
+func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	// get required params
 	token, err := requireStringParam(w, r, "token")
 	if err != nil { return }
@@ -65,11 +52,8 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := requireStringParam(w, r, "body")
 	if err != nil { return }
 
-	// TODO: read project ID from command line (or service-account.json)
-	project := "test-fdfb4"
-
-	// fmt.Fprintf(w, "ok, token=%v, title=%v, body=%v\n", token, title, body)
-	response, err := sendMessage(project, token, title, body)
+	// send the message
+	response, err := srv.sendMessage(token, title, body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "%v", err)
@@ -78,11 +62,38 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "ok, response=%s\n", response)
 }
 
+func createFirebaseClient(credentialsFile string) (*ServiceData, error) {
+	// initialize FCM
+	opts := []option.ClientOption{option.WithCredentialsFile(credentialsFile)}
+	config := &firebase.Config{}
+	app, err := firebase.NewApp(context.Background(), config, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a messaging client
+	fcmClient, err := app.Messaging(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	srv := &ServiceData{
+		fcmClient: fcmClient,
+	}
+	return srv, nil
+}
+
 func main() {
 	config := parseCommandLine()
 
+	// init FCM
+	log.Printf("initializing firebase with credentials file %s", config.CredentialsFile)
+	srv, err := createFirebaseClient(config.CredentialsFile)
+	if err != nil {
+		log.Fatalf("error: %v\n", err)
+	}
+
 	// define endpoints
-	http.HandleFunc("/send", sendHandler)
+	http.HandleFunc("/send", srv.sendHandler)
 
 	// start server
 	log.Printf("listening on %v", config.Addr)
