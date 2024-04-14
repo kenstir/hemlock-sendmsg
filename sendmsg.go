@@ -1,15 +1,17 @@
 package main
 
 import (
-	// "context"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
-	// firebase "firebase.google.com/go/v4"
-	// "firebase.google.com/go/v4/messaging"
-	// "google.golang.org/api/option"
+
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
+	"google.golang.org/api/option"
 )
 
+// requireStringParam returns FormValue(param) or an error
 func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (string, error) {
 	value := r.FormValue(param)
 	if value == "" {
@@ -21,7 +23,41 @@ func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (s
 	return value, nil
 }
 
+func sendMessage(project string, token string, title string, body string) (string, error) {
+	// TODO: read credentialsFile from env var or command line
+	credentialsFile := "service-account.json"
+
+	// initialize FCM
+	opts := []option.ClientOption{option.WithCredentialsFile(credentialsFile)}
+	config := &firebase.Config{ProjectID: project}
+	app, err := firebase.NewApp(context.Background(), config, opts...)
+	if err != nil {
+		log.Fatalf("error initializing app: %v\n", err)
+	}
+
+	// create a messaging client
+	fcmClient, err := app.Messaging(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to initialize Messaging: %s", err) 
+	}
+
+	// send the message
+	response, err := fcmClient.Send(context.Background(), &messaging.Message{
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
+		Token: token,
+	})
+	if err != nil {
+		log.Printf("Failed to send notification: %s", err)
+		return "", err
+	}
+	return response, nil
+}
+
 func sendHandler(w http.ResponseWriter, r *http.Request) {
+	// get required params
 	token, err := requireStringParam(w, r, "token")
 	if err != nil { return }
 	title, err := requireStringParam(w, r, "title")
@@ -29,7 +65,17 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := requireStringParam(w, r, "body")
 	if err != nil { return }
 
-	fmt.Fprintf(w, "ok, token=%v, title=%v, body=%v\n", token, title, body)
+	// TODO: read project ID from command line
+	project := "test-fdfb4"
+
+	// fmt.Fprintf(w, "ok, token=%v, title=%v, body=%v\n", token, title, body)
+	response, err := sendMessage(project, token, title, body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "%v", err)
+		return
+	}
+	fmt.Fprintf(w, "ok, response=%s", response)
 }
 
 func main() {
@@ -39,33 +85,4 @@ func main() {
 	addr := "localhost:8842"
 	log.Printf("listening on %v", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
-/*
-	// TODO: read path from env var or command line
-	opts := []option.ClientOption{option.WithCredentialsFile("service-account.json")}
-
-	// TODO: read from command line
-	config := &firebase.Config{ProjectID: "test-fdfb4"}
-
-	app, err := firebase.NewApp(context.Background(), config, opts...)
-	if err != nil {
-		log.Fatalf("error initializing app: %v\n", err)
-	}
-
-	fcmClient, err := app.Messaging(context.Background())
-	if err != nil {
-		log.Fatalf("Failed to initialize Messaging: %s", err) 
-	}
-
-	response, err := fcmClient.Send(context.Background(), &messaging.Message{
-		Notification: &messaging.Notification{
-			Title:    "A nice notification title",
-			Body:     "A nice notification body",
-		},
-		Token: "f2uwnT37RJqljk8b9PV4zJ:APA91bFgG03Ty5cl7epCXh4vAJg68M-yz1Uuh4YIjSv2oSy38a-XzcekEsH-SmGd_r94b2EFc8Kxo6CEYDdPRqqmqa_ykdHpxv7xjZR8QMvFwBkvV3YJC9BSOraH1hDaeUgK8wHhjhq5",
-	})
-	if err != nil {
-		log.Fatalf("Failed to send notification: %s", err) 
-	}
-	fmt.Println("Successfully sent message, response:", response)
-	*/
 }
