@@ -5,24 +5,31 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
 	// firebase "firebase.google.com/go/v4"
 	// "firebase.google.com/go/v4/messaging"
 	// "google.golang.org/api/option"
 )
 
-// func requireStringParam(w http.ResponseWriter, r *http.Request) string, error {
-
-// }
+func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (string, error) {
+	value := r.FormValue(param)
+	if value == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		err := fmt.Errorf("missing param \"%s\"", param)
+		fmt.Fprintf(w, "%s\n", err.Error())
+		return "", err
+	}
+	return value, nil
+}
 
 func sendHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.FormValue("token")
-	if token == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "missing param \"token\"\n")
-		return
-	}
-	fmt.Fprintf(w, "ok, token=%v\n", token)
+	token, err := requireStringParam(w, r, "token")
+	if err != nil { return }
+	title, err := requireStringParam(w, r, "title")
+	if err != nil { return }
+	body, err := requireStringParam(w, r, "body")
+	if err != nil { return }
+
+	fmt.Fprintf(w, "ok, token=%v, title=%v, body=%v\n", token, title, body)
 }
 
 func main() {
