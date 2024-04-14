@@ -1,17 +1,42 @@
 package main
 
 import (
-	"context"
+	// "context"
 	"fmt"
 	"log"
+	"net/http"
 
-	firebase "firebase.google.com/go/v4"
-	"firebase.google.com/go/v4/messaging"
-	"google.golang.org/api/option"
+	// firebase "firebase.google.com/go/v4"
+	// "firebase.google.com/go/v4/messaging"
+	// "google.golang.org/api/option"
 )
 
+// func requireStringParam(w http.ResponseWriter, r *http.Request) string, error {
+
+// }
+
+func sendHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.FormValue("token")
+	if token == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "missing param \"token\"\n")
+		return
+	}
+	fmt.Fprintf(w, "ok, token=%v\n", token)
+}
+
 func main() {
+	http.HandleFunc("/send", sendHandler)
+
+	// TODO: read addr from command line
+	addr := "localhost:8842"
+	log.Printf("listening on %v", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
+/*
+	// TODO: read path from env var or command line
 	opts := []option.ClientOption{option.WithCredentialsFile("service-account.json")}
+
+	// TODO: read from command line
 	config := &firebase.Config{ProjectID: "test-fdfb4"}
 
 	app, err := firebase.NewApp(context.Background(), config, opts...)
@@ -35,4 +60,5 @@ func main() {
 		log.Fatalf("Failed to send notification: %s", err) 
 	}
 	fmt.Println("Successfully sent message, response:", response)
+	*/
 }
