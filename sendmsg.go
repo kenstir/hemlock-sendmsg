@@ -23,13 +23,13 @@ func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (s
 	return value, nil
 }
 
-func sendMessage(project string, token string, title string, body string) (string, error) {
+func sendMessage(_ string, token string, title string, body string) (string, error) {
 	// TODO: read credentialsFile from env var or command line
 	credentialsFile := "service-account.json"
 
 	// initialize FCM
 	opts := []option.ClientOption{option.WithCredentialsFile(credentialsFile)}
-	config := &firebase.Config{ProjectID: project}
+	config := &firebase.Config{}
 	app, err := firebase.NewApp(context.Background(), config, opts...)
 	if err != nil {
 		log.Fatalf("error initializing app: %v\n", err)
@@ -65,7 +65,7 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := requireStringParam(w, r, "body")
 	if err != nil { return }
 
-	// TODO: read project ID from command line
+	// TODO: read project ID from command line (or service-account.json)
 	project := "test-fdfb4"
 
 	// fmt.Fprintf(w, "ok, token=%v, title=%v, body=%v\n", token, title, body)
@@ -75,14 +75,16 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%v", err)
 		return
 	}
-	fmt.Fprintf(w, "ok, response=%s", response)
+	fmt.Fprintf(w, "ok, response=%s\n", response)
 }
 
 func main() {
+	config := parseCommandLine()
+
+	// define endpoints
 	http.HandleFunc("/send", sendHandler)
 
-	// TODO: read addr from command line
-	addr := "localhost:8842"
-	log.Printf("listening on %v", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	// start server
+	log.Printf("listening on %v", config.Addr)
+	log.Fatal(http.ListenAndServe(config.Addr, nil))
 }
