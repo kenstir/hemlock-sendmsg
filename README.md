@@ -19,3 +19,17 @@ Detailed Usage
 Use `-addr [host:port]` to change the server's address and port.
 
 Use `-credentialsFile [path]` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to change the location of the service account key.
+
+Sending a Push Notification
+---------------------------
+POST to /send with parameters:
+* `token` - the FCM registration token
+* `title` - the title of the notification
+* `body`  - the body text of the notification
+
+For example:
+```bash
+$ token="f2uw...Sv2o"
+$ curl -F token="$token" -F title="news u ken use" -F body="DM5" localhost:8842/send
+ok
+```
