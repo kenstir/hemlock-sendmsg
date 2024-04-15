@@ -6,8 +6,9 @@ hemlock-sendmsg
 Quick Start
 -----------
 1. Enable Firebase Cloud Messaging (FCM) in the Firebase project associated with the app.
-1. Create a Message Sender role and message-sender service account.  Download the service account key as `service-account.json`.
-1. Start the server ```bash
+2. Create a Message Sender role and message-sender service account.  Download the service account key as `service-account.json`.
+3. Start the server
+```bash
 # ./hemlock-sendmsg
 2024/04/15 13:07:25 initializing firebase with credentials file service-account.json
 2024/04/15 13:07:25 listening on localhost:8842
