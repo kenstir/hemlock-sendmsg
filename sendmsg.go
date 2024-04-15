@@ -7,27 +7,45 @@ import (
 	"net/http"
 
 	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/errorutils"
 	"firebase.google.com/go/v4/messaging"
 	"google.golang.org/api/option"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type ServiceData struct {
 	fcmClient *messaging.Client
+
+	notificationsSent *prometheus.CounterVec
 }
 
-// requireStringParam returns FormValue(param) or an error
-func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (string, error) {
-	value := r.FormValue(param)
-	if value == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		err := fmt.Errorf("missing param \"%s\"", param)
-		fmt.Fprintf(w, "%s\n", err.Error())
-		return "", err
+func (srv *ServiceData) handleSendError(err error) int {
+	httpStatusCode := http.StatusInternalServerError
+	if resp := errorutils.HTTPResponse(err); resp != nil {
+		httpStatusCode = resp.StatusCode
 	}
-	return value, nil
+	result := ""
+	if messaging.IsUnregistered(err) {
+		result = "Unregistered"
+		// should remove token from db
+	} else if errorutils.IsUnavailable(err) {
+		result = "Unavailable"
+		// should retry in an hour
+	} else if messaging.IsInternal(err) {
+		result = "InternalError"
+	} else if messaging.IsInvalidArgument(err) {
+		result = "InvalidArgument"
+	} else {
+		result = "UnknownError"
+	}
+	log.Printf("Failed to send notification (%d, %s): %s", httpStatusCode, result, err)
+	srv.notificationsSent.WithLabelValues(result).Inc()
+	return httpStatusCode
 }
 
-func (srv *ServiceData) sendMessage(token string, title string, body string) (string, error) {
+func (srv *ServiceData) sendMessage(token string, title string, body string) (string, int, error) {
 	// send the message
 	response, err := srv.fcmClient.Send(context.Background(), &messaging.Message{
 		Notification: &messaging.Notification{
@@ -37,10 +55,22 @@ func (srv *ServiceData) sendMessage(token string, title string, body string) (st
 		Token: token,
 	})
 	if err != nil {
-		log.Printf("Failed to send notification: %s", err)
+		httpStatusCode := srv.handleSendError(err)
+		return "", httpStatusCode, err
+	}
+	return response, 0, nil
+}
+
+// requireStringParam returns FormValue(param) or replies BadRequest and returns an error
+func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (string, error) {
+	value := r.FormValue(param)
+	if value == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		err := fmt.Errorf("missing param \"%s\"", param)
+		fmt.Fprintf(w, "%s\n", err.Error())
 		return "", err
 	}
-	return response, nil
+	return value, nil
 }
 
 func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,16 +83,16 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil { return }
 
 	// send the message
-	response, err := srv.sendMessage(token, title, body)
+	response, httpStatusCode, err := srv.sendMessage(token, title, body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "%v", err)
+		w.WriteHeader(httpStatusCode)
+		fmt.Fprintf(w, "%d %v\n", httpStatusCode, err)
 		return
 	}
 	fmt.Fprintf(w, "ok, response=%s\n", response)
 }
 
-func createFirebaseClient(credentialsFile string) (*ServiceData, error) {
+func createServiceData(credentialsFile string) (*ServiceData, error) {
 	// initialize FCM
 	opts := []option.ClientOption{option.WithCredentialsFile(credentialsFile)}
 	config := &firebase.Config{}
@@ -76,8 +106,20 @@ func createFirebaseClient(credentialsFile string) (*ServiceData, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// register prometheus metrics with "hemlock_" prefix
+	notificationsSent := promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "hemlock_notifications_sent_total",
+			Help: "Notifications sent, by result",
+		},
+		[]string{"result"},
+	)
+
+	// create servicedata
 	srv := &ServiceData{
 		fcmClient: fcmClient,
+		notificationsSent: notificationsSent,
 	}
 	return srv, nil
 }
@@ -87,12 +129,13 @@ func main() {
 
 	// init FCM
 	log.Printf("initializing firebase with credentials file %s", config.CredentialsFile)
-	srv, err := createFirebaseClient(config.CredentialsFile)
+	srv, err := createServiceData(config.CredentialsFile)
 	if err != nil {
 		log.Fatalf("error: %v\n", err)
 	}
 
 	// define endpoints
+	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/send", srv.sendHandler)
 
 	// start server
