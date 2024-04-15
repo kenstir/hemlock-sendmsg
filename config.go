@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 )
 
 type Config struct {
@@ -12,7 +13,10 @@ type Config struct {
 func parseCommandLine() *Config {
 	dfltAddr := "localhost:8842"
 	addr := flag.String("addr", dfltAddr, "Address to listen on")
-	dfltCredentialsFile := "service-account.json"
+	dfltCredentialsFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	if dfltCredentialsFile == "" {
+		dfltCredentialsFile = "service-account.json"
+	}
 	credentialsFile := flag.String("credentialsFile", dfltCredentialsFile, "Path to service account credentials in JSON format")
 
 	flag.Parse()
