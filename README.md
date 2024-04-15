@@ -18,4 +18,4 @@ Detailed Usage
 --------------
 Use `-addr [host:port]` to change the server's address and port.
 
-Use `-credentialsFile path` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to change the location of the service account key.
+Use `-credentialsFile [path]` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to change the location of the service account key.
