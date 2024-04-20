@@ -5,13 +5,13 @@ hemlock-sendmsg
 
 Quick Start
 -----------
-1. Enable Firebase Cloud Messaging (FCM) in the Firebase project associated with the app.
-2. Create a Message Sender role and message-sender service account.  Download the service account key as `service-account.json`.
+1. Install `hemlock-sendmsg` on the machine which runs Evergreen action triggers.
+2. In the [Firebase Console](https://console.firebase.google.com/), create a service account with the `cloudmessaging.messages.create` permission, create a service account key, and save it to the `hemlock-sendmsg` install directory as `service-account.json`.  For detailed instructions, see the [Setup Guide to Push Notifications](https://github.com/kenstir/hemlock/blob/feat/pn/docs/setup-guide-to-push-notifications.md).
 3. Start the server
 ```bash
-# ./hemlock-sendmsg
-2024/04/15 13:07:25 initializing firebase with credentials file service-account.json
-2024/04/15 13:07:25 listening on localhost:8842
+$ ./hemlock-sendmsg
+2024/04/20 13:07:25 initializing firebase with credentials file service-account.json
+2024/04/20 13:07:25 listening on localhost:8842
 ```
 
 Detailed Usage
