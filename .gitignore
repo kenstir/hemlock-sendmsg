@@ -1,5 +1,5 @@
 *~
 /hemlock-sendmsg
 /hemlock-sendmsg.exe
-/service-account.json
+/service-account*
 .DS_Store

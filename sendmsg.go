@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/errorutils"
 	"firebase.google.com/go/v4/messaging"
-	"google.golang.org/api/option"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/api/option"
 )
 
 type ServiceData struct {
@@ -40,7 +41,7 @@ func (srv *ServiceData) handleSendError(err error) int {
 	} else {
 		result = "UnknownError"
 	}
-	log.Printf("Failed to send notification (%d, %s): %s", httpStatusCode, result, err)
+	slog.Error("Failed to send notification", "code", httpStatusCode, "result", result, "err", err)
 	srv.notificationsSent.WithLabelValues(result).Inc()
 	return httpStatusCode
 }
@@ -128,10 +129,11 @@ func main() {
 	config := parseCommandLine()
 
 	// init FCM
-	log.Printf("initializing firebase with credentials file %s", config.CredentialsFile)
+	slog.Info(fmt.Sprintf("initializing firebase with credentials file %s", config.CredentialsFile))
 	srv, err := createServiceData(config.CredentialsFile)
 	if err != nil {
-		log.Fatalf("error: %v\n", err)
+		slog.Error("error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// define endpoints
@@ -139,6 +141,7 @@ func main() {
 	http.HandleFunc("/send", srv.sendHandler)
 
 	// start server
-	log.Printf("listening on %v", config.Addr)
-	log.Fatal(http.ListenAndServe(config.Addr, nil))
+	slog.Info(fmt.Sprintf("listening on %s", config.Addr))
+	err = http.ListenAndServe(config.Addr, nil)
+	slog.Info(err.Error())
 }
