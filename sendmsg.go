@@ -94,6 +94,11 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
+	// sanity check that credentialsFile is present, else you get an unhelpful error
+	if _, err := os.Stat(credentialsFile); err != nil {
+		return nil, err
+	}
+
 	// initialize FCM
 	opts := []option.ClientOption{option.WithCredentialsFile(credentialsFile)}
 	config := &firebase.Config{}
@@ -132,7 +137,7 @@ func main() {
 	slog.Info(fmt.Sprintf("initializing firebase with credentials file %s", config.CredentialsFile))
 	srv, err := createServiceData(config.CredentialsFile)
 	if err != nil {
-		slog.Error("error: %v\n", err)
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 
