@@ -22,8 +22,8 @@ type ServiceData struct {
 	notificationsSent *prometheus.CounterVec
 }
 
-/// categorize the result of sendMessage and record metrics
-func (srv *ServiceData) logSendMessage(err error) int {
+/// categorize the result of sendMessage and record metric
+func (srv *ServiceData) trackSendMessage(err error) (string, int) {
 	httpStatusCode := http.StatusOK
 	result := "ok"
 	if err != nil {
@@ -45,15 +45,13 @@ func (srv *ServiceData) logSendMessage(err error) int {
 		} else {
 			result = "UnknownError"
 		}
-		slog.Error("Failed to send notification", "code", httpStatusCode, "result", result, "err", err)
-	} else {
-		slog.Debug("Sent notification", "code", httpStatusCode, "result", result)
 	}
 	srv.notificationsSent.WithLabelValues(result).Inc()
-	return httpStatusCode
+	return result, httpStatusCode
 }
 
-func (srv *ServiceData) sendMessage(token string, title string, body string) (string, int, error) {
+/// send a notification
+func (srv *ServiceData) sendMessage(token string, title string, body string) (string, string, int, error) {
 	// send the message
 	response, err := srv.fcmClient.Send(context.Background(), &messaging.Message{
 		Notification: &messaging.Notification{
@@ -62,8 +60,8 @@ func (srv *ServiceData) sendMessage(token string, title string, body string) (st
 		},
 		Token: token,
 	})
-	httpStatusCode := srv.logSendMessage(err)
-	return response, httpStatusCode, err
+	result, httpStatusCode := srv.trackSendMessage(err)
+	return response, result, httpStatusCode, err
 }
 
 // requireStringParam returns FormValue(param) or replies BadRequest and returns an error
@@ -87,13 +85,24 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := requireStringParam(w, r, "body")
 	if err != nil { return }
 
+	// get optional params
+	debug := r.FormValue("debug")
+	logLevel := slog.LevelDebug
+	if debug != "" && debug != "0" {
+		logLevel = slog.LevelInfo
+	}
+
 	// send the message
-	response, httpStatusCode, err := srv.sendMessage(token, title, body)
+	response, result, httpStatusCode, err := srv.sendMessage(token, title, body)
 	if err != nil {
+		slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
 		w.WriteHeader(httpStatusCode)
 		fmt.Fprintf(w, "%d %v\n", httpStatusCode, err)
 		return
+	} else {
+		slog.Log(r.Context(), logLevel, "Sent notification", "title", title, "body", body, "token", token)
 	}
+
 	fmt.Fprintf(w, "ok, response=%s\n", response)
 }
 
