@@ -22,26 +22,33 @@ type ServiceData struct {
 	notificationsSent *prometheus.CounterVec
 }
 
-func (srv *ServiceData) handleSendError(err error) int {
-	httpStatusCode := http.StatusInternalServerError
-	if resp := errorutils.HTTPResponse(err); resp != nil {
-		httpStatusCode = resp.StatusCode
-	}
-	result := ""
-	if messaging.IsUnregistered(err) {
-		result = "Unregistered"
-		// should remove token from db
-	} else if errorutils.IsUnavailable(err) {
-		result = "Unavailable"
-		// should retry in an hour
-	} else if messaging.IsInternal(err) {
-		result = "InternalError"
-	} else if messaging.IsInvalidArgument(err) {
-		result = "InvalidArgument"
+/// categorize the result of sendMessage and record metrics
+func (srv *ServiceData) logSendMessage(err error) int {
+	httpStatusCode := http.StatusOK
+	result := "ok"
+	if err != nil {
+		httpStatusCode = http.StatusInternalServerError
+		if resp := errorutils.HTTPResponse(err); resp != nil {
+			httpStatusCode = resp.StatusCode
+		}
+		result = ""
+		if messaging.IsUnregistered(err) {
+			result = "Unregistered"
+			// should remove token from db
+		} else if errorutils.IsUnavailable(err) {
+			result = "Unavailable"
+			// should retry in an hour
+		} else if messaging.IsInternal(err) {
+			result = "InternalError"
+		} else if messaging.IsInvalidArgument(err) {
+			result = "InvalidArgument"
+		} else {
+			result = "UnknownError"
+		}
+		slog.Error("Failed to send notification", "code", httpStatusCode, "result", result, "err", err)
 	} else {
-		result = "UnknownError"
+		slog.Debug("Sent notification", "code", httpStatusCode, "result", result)
 	}
-	slog.Error("Failed to send notification", "code", httpStatusCode, "result", result, "err", err)
 	srv.notificationsSent.WithLabelValues(result).Inc()
 	return httpStatusCode
 }
@@ -55,11 +62,8 @@ func (srv *ServiceData) sendMessage(token string, title string, body string) (st
 		},
 		Token: token,
 	})
-	if err != nil {
-		httpStatusCode := srv.handleSendError(err)
-		return "", httpStatusCode, err
-	}
-	return response, 0, nil
+	httpStatusCode := srv.logSendMessage(err)
+	return response, httpStatusCode, err
 }
 
 // requireStringParam returns FormValue(param) or replies BadRequest and returns an error
@@ -148,5 +152,7 @@ func main() {
 	// start server
 	slog.Info(fmt.Sprintf("listening on %s", config.Addr))
 	err = http.ListenAndServe(config.Addr, nil)
-	slog.Info(err.Error())
+	if err != http.ErrServerClosed {
+		slog.Error(err.Error())
+	}
 }
