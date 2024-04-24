@@ -49,7 +49,8 @@ Collecting Metrics
 ------------------
 GET /metrics
 
-The metrics includes golang runtime and some other stats as well as internal stats.  To see just the internal status, grep for "hemlock_", e.g.
+The metrics includes golang runtime and some other stats as well as internal stats in Prometheus format.
+To see just the internal status, grep for "hemlock_", e.g.
 ```bash
 $ curl -sS localhost:8842/metrics | grep hemlock_
 # HELP hemlock_notifications_sent_total Notifications sent, by result
