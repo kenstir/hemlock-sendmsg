@@ -23,10 +23,13 @@ type ServiceData struct {
 }
 
 /// categorize the result of sendMessage and record metric
-func (srv *ServiceData) trackSendMessage(err error) (string, int) {
+func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) {
 	httpStatusCode := http.StatusOK
 	result := "ok"
-	if err != nil {
+	if token == "" {
+		httpStatusCode = http.StatusBadRequest
+		result = "EmptyToken"
+	} else if err != nil {
 		httpStatusCode = http.StatusInternalServerError
 		if resp := errorutils.HTTPResponse(err); resp != nil {
 			httpStatusCode = resp.StatusCode
@@ -53,14 +56,18 @@ func (srv *ServiceData) trackSendMessage(err error) (string, int) {
 /// send a notification
 func (srv *ServiceData) sendMessage(token string, title string, body string) (string, string, int, error) {
 	// send the message
-	response, err := srv.fcmClient.Send(context.Background(), &messaging.Message{
-		Notification: &messaging.Notification{
-			Title: title,
-			Body:  body,
-		},
-		Token: token,
-	})
-	result, httpStatusCode := srv.trackSendMessage(err)
+	response := ""
+	var err error = nil
+	if token != "" {
+		response, err = srv.fcmClient.Send(context.Background(), &messaging.Message{
+			Notification: &messaging.Notification{
+				Title: title,
+				Body:  body,
+			},
+			Token: token,
+		})
+	}
+	result, httpStatusCode := srv.trackSendMessage(token, err)
 	return response, result, httpStatusCode, err
 }
 
@@ -78,14 +85,16 @@ func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (s
 
 func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	// get required params
-	token, err := requireStringParam(w, r, "token")
-	if err != nil { return }
 	title, err := requireStringParam(w, r, "title")
 	if err != nil { return }
 	body, err := requireStringParam(w, r, "body")
 	if err != nil { return }
 
-	// get optional params
+	// token is "required", but we want to keep track of requests made without one,
+	// to count users without the mobile app
+	token := r.FormValue("token")
+
+	// get optional debug param
 	debug := r.FormValue("debug")
 	logLevel := slog.LevelDebug
 	if debug != "" && debug != "0" {
@@ -97,10 +106,10 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
 		w.WriteHeader(httpStatusCode)
-		fmt.Fprintf(w, "%d %v\n", httpStatusCode, err)
+		fmt.Fprintf(w, "%s\n", err.Error())
 		return
 	} else {
-		slog.Log(r.Context(), logLevel, "Sent notification", "title", title, "body", body, "token", token)
+		slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "title", title, "body", body, "token", token)
 	}
 
 	fmt.Fprintf(w, "ok, response=%s\n", response)

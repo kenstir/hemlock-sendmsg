@@ -30,6 +30,19 @@ POST to /send with parameters:
 For example:
 ```bash
 $ token="f2uw...Sv2o"
-$ curl -F token="$token" -F title="news u ken use" -F body="DM5" localhost:8842/send
+$ curl -F token="$token" -F title="news u ken use" -F body="DM $(date '+%a %H:%M')" localhost:8842/send
 ok
 ```
+
+To debug the /send endpoint, you can add a `debug=1` param, and `hemlock-sendmsg` will
+log the inputs and results to stdout, e.g.:
+```bash
+$ curl -F token="" -F title="news u ken use" -F body="DM5" -F debug=1 localhost:8842/send
+```
+
+Will cause `hemlock-sendmsg` to log something like:
+```
+2024/04/23 20:23:17 INFO POST /send result=ok code=200 title="news u ken use" body=DM5 token=fGk...RAK
+```
+
+As a special case, `debug=0` does not log.
