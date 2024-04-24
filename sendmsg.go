@@ -107,12 +107,10 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
 		w.WriteHeader(httpStatusCode)
 		fmt.Fprintf(w, "%s\n", err.Error())
-		return
 	} else {
-		slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "title", title, "body", body, "token", token)
+		fmt.Fprintf(w, "%s\n", response)
 	}
-
-	fmt.Fprintf(w, "ok, response=%s\n", response)
+	slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "title", title, "body", body, "token", token)
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
