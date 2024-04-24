@@ -23,9 +23,10 @@ Use `-credentialsFile [path]` or the `GOOGLE_APPLICATION_CREDENTIALS` environmen
 Sending a Push Notification
 ---------------------------
 POST to /send with parameters:
-* `token` - the FCM registration token
 * `title` - the title of the notification
 * `body`  - the body text of the notification
+* `token` - the FCM registration token
+* `debug` - if not empty and not "0", log the call to stdout
 
 For example:
 ```bash
@@ -34,15 +35,25 @@ $ curl -F token="$token" -F title="news u ken use" -F body="DM $(date '+%a %H:%M
 ok
 ```
 
-To debug the /send endpoint, you can add a `debug=1` param, and `hemlock-sendmsg` will
-log the inputs and results to stdout, e.g.:
+Using debug=1, e.g.:
 ```bash
 $ curl -F token="" -F title="news u ken use" -F body="DM5" -F debug=1 localhost:8842/send
 ```
 
 Will cause `hemlock-sendmsg` to log something like:
 ```
-2024/04/23 20:23:17 INFO POST /send result=ok code=200 title="news u ken use" body=DM5 token=fGk...RAK
+2024/04/23 20:23:17 INFO POST /send result=EmptyToken code=400 title="news u ken use" body=DM5 token=""
 ```
 
-As a special case, `debug=0` does not log.
+Collecting Metrics
+------------------
+GET /metrics
+
+The metrics includes golang runtime and some other stats as well as internal stats.  To see just the internal status, grep for "hemlock_", e.g.
+```bash
+$ curl -sS localhost:8842/metrics | grep hemlock_
+# HELP hemlock_notifications_sent_total Notifications sent, by result
+# TYPE hemlock_notifications_sent_total counter
+hemlock_notifications_sent_total{result="EmptyToken"} 1
+hemlock_notifications_sent_total{result="ok"} 2
+```
