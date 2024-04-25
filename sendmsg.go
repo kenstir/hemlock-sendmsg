@@ -16,6 +16,12 @@ import (
 	"google.golang.org/api/option"
 )
 
+/// custom keys in the Data payload
+/// do not change these, they are embedded in the Hemlock apps
+const HemlockNotificationTypeKey = "hemlock.t"
+const HemlockNotificationUsernameKey = "hemlock.u"
+const HemlockNotificationTypePMC = "pmc" // Patron Message Center
+
 type ServiceData struct {
 	fcmClient *messaging.Client
 
@@ -54,12 +60,16 @@ func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) 
 }
 
 /// send a notification
-func (srv *ServiceData) sendMessage(token string, title string, body string) (string, string, int, error) {
+func (srv *ServiceData) sendMessage(token string, title string, body string, username string) (string, string, int, error) {
 	// send the message
 	response := ""
 	var err error = nil
 	if token != "" {
 		response, err = srv.fcmClient.Send(context.Background(), &messaging.Message{
+			Data: map[string]string{
+				HemlockNotificationTypeKey: HemlockNotificationTypePMC,
+				HemlockNotificationUsernameKey: username,
+			},
 			Notification: &messaging.Notification{
 				Title: title,
 				Body:  body,
@@ -94,6 +104,9 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	// to count users without the mobile app
 	token := r.FormValue("token")
 
+	// should be required
+	username := r.FormValue("username")
+
 	// get optional debug param
 	debug := r.FormValue("debug")
 	logLevel := slog.LevelDebug
@@ -102,7 +115,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send the message
-	response, result, httpStatusCode, err := srv.sendMessage(token, title, body)
+	response, result, httpStatusCode, err := srv.sendMessage(token, title, body, username)
 	if err != nil {
 		slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
 		w.WriteHeader(httpStatusCode)
@@ -110,7 +123,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Fprintf(w, "%s\n", response)
 	}
-	slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "title", title, "body", body, "token", token)
+	slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "username", username, "title", title, "body", body, "token", token)
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
