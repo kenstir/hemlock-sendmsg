@@ -40,6 +40,20 @@ Will cause `hemlock-sendmsg` to log something like:
 2024/04/29 17:45:21 INFO POST /send result=ok code=200 username="" title="New Message" body="DM Mon 17:45" token=fHC...sQy
 ```
 
+Finding a Patron's Push Notification Token
+------------------------------------------
+The push notification token is stored after login as a user setting.  So to find the push notification token
+for the 'hemlock' user, you could issue the SQL query:
+```
+evergreen=# select s.value from actor.usr_setting s
+join actor.usr u on u.id=s.usr
+where usrname='hemlock' and s.name='hemlock.push_notification_data';
+    value
+-------------
+"fwql...y-MU"
+(1 row)
+```
+
 Collecting Metrics
 ------------------
 GET /metrics
