@@ -26,12 +26,13 @@ POST to /send with parameters:
 * `title` - the title of the notification
 * `body`  - the body text of the notification
 * `token` - the FCM registration token
+* `type`  - the push notification type, controls the app screen that launches when you tap the notification; "pmc" for Patron Message Center, "main" for the main screen
 * `debug` - if not empty and not "0", log the call to stdout
 
 For example:
 ```bash
 $ token="f2uw...Sv2o"
-$ curl -F token="$token" -F title="New Message" -F body="DM $(date '+%a %H:%M')" -F debug=1 localhost:8842/send
+$ curl -F token="$token" -F title="New Message" -F body="DM $(date '+%a %H:%M')" -F type=pmc -F debug=1 localhost:8842/send
 ok
 ```
 

@@ -20,7 +20,8 @@ import (
 /// do not change these, they are embedded in the Hemlock apps
 const HemlockNotificationTypeKey = "hemlock.t"
 const HemlockNotificationUsernameKey = "hemlock.u"
-const HemlockNotificationTypePMC = "pmc" // Patron Message Center
+const HemlockNotificationTypeMain = "main" // target activity: Main
+const HemlockNotificationTypePMC = "pmc" // target activity: Patron Message Center
 
 type ServiceData struct {
 	fcmClient *messaging.Client
@@ -60,14 +61,14 @@ func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) 
 }
 
 /// send a notification
-func (srv *ServiceData) sendMessage(token string, title string, body string, username string) (string, string, int, error) {
+func (srv *ServiceData) sendMessage(token string, title string, body string, notificationType string, username string) (string, string, int, error) {
 	// send the message
 	response := ""
 	var err error = nil
 	if token != "" {
 		response, err = srv.fcmClient.Send(context.Background(), &messaging.Message{
 			Data: map[string]string{
-				HemlockNotificationTypeKey: HemlockNotificationTypePMC,
+				HemlockNotificationTypeKey: notificationType,
 				HemlockNotificationUsernameKey: username,
 			},
 			Notification: &messaging.Notification{
@@ -107,6 +108,9 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	// should be required
 	username := r.FormValue("username")
 
+	// get optional type param
+	notificationType := r.FormValue("type")
+
 	// get optional debug param
 	debug := r.FormValue("debug")
 	logLevel := slog.LevelDebug
@@ -115,7 +119,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send the message
-	response, result, httpStatusCode, err := srv.sendMessage(token, title, body, username)
+	response, result, httpStatusCode, err := srv.sendMessage(token, title, body, notificationType, username)
 	if err != nil {
 		slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
 		w.WriteHeader(httpStatusCode)
@@ -123,7 +127,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Fprintf(w, "%s\n", response)
 	}
-	slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "username", username, "title", title, "body", body, "token", token)
+	slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "username", username, "title", title, "type", notificationType, "body", body, "token", token)
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
