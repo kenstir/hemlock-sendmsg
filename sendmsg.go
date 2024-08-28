@@ -126,6 +126,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 
 	// get optional type param
+	// TODO: factor logic out into func: err := validateTypeParam(notificationType)
 	notificationType := r.FormValue("type")
 	if notificationType != "" {
 		_, found := HemlockNotificationTypes[notificationType]
