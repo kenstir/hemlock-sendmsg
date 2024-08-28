@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
+	"strings"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/errorutils"
@@ -16,12 +18,22 @@ import (
 	"google.golang.org/api/option"
 )
 
-/// custom keys in the Data payload
-/// do not change these, they are embedded in the Hemlock apps
+/// Custom keys sent in the Data payload.
+/// Do not change these, they are embedded in the Hemlock apps.
 const HemlockNotificationTypeKey = "hemlock.t"
 const HemlockNotificationUsernameKey = "hemlock.u"
-const HemlockNotificationTypeMain = "main" // target activity: Main
-const HemlockNotificationTypePMC = "pmc" // target activity: Patron Message Center
+
+// NB: This list of notification types (Android notification channelIds) must be kept in sync in 3 places:
+// * hemlock (android): core/src/main/java/org/evergreen_ils/data/PushNotification.kt
+// * hemlock-ios:       Source/Models/PushNotification.swift
+// * hemlock-sendmsg:   sendmsg.go
+var HemlockNotificationTypes = map[string]bool{
+	"checkouts": true,
+	"fines": true,
+	"general": true,
+	"holds": true,
+	"pmc": true,
+}
 
 type ServiceData struct {
 	fcmClient *messaging.Client
@@ -115,6 +127,21 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 
 	// get optional type param
 	notificationType := r.FormValue("type")
+	if notificationType != "" {
+		_, found := HemlockNotificationTypes[notificationType]
+		if !found {
+			slog.Error("Invalid type", "type", notificationType)
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Invalid type: %s", notificationType)
+			keys := make([]string, 0, len(HemlockNotificationTypes))
+			for key := range HemlockNotificationTypes {
+					keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			fmt.Fprintf(w, "; use one of {%s}\n", strings.Join(keys, ", "))
+			return
+		}
+	}
 
 	// get optional debug param
 	debug := r.FormValue("debug")
