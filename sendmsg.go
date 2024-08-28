@@ -75,6 +75,11 @@ func (srv *ServiceData) sendMessage(token string, title string, body string, not
 				Title: title,
 				Body:  body,
 			},
+			Android: &messaging.AndroidConfig{
+				Notification: &messaging.AndroidNotification{
+					ChannelID: notificationType,
+				},
+			},
 			Token: token,
 		})
 	}
