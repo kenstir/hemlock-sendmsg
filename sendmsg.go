@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -201,6 +202,17 @@ func createServiceData(credentialsFile string) (*ServiceData, error) {
 }
 
 func main() {
+	info, _ := debug.ReadBuildInfo()
+	for _, element := range info.Settings {
+		if element.Key == "vcs.revision" {
+			slog.Info(fmt.Sprintf("starting, vcs.revision=%v", element.Value))
+		} else if element.Key == "vcs.time" {
+			slog.Info(fmt.Sprintf("starting, vcs.time=%v", element.Value))
+		} else if element.Key == "vcs.modified" {
+			slog.Info(fmt.Sprintf("starting, vcs.modified=%v", element.Value))
+		}
+	}
+
 	config := parseCommandLine()
 
 	// init FCM
