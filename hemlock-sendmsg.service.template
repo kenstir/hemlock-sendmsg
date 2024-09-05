@@ -1,0 +1,11 @@
+[Unit]
+Description=a small daemon for sending push notifications to the Hemlock mobile apps
+After=network.target
+
+[Service]
+ExecStart={{install_path}}/hemlock-sendmsg
+WorkingDirectory=/
+Type=exec
+
+[Install]
+WantedBy=multi-user.target

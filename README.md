@@ -5,13 +5,15 @@ hemlock-sendmsg
 
 Quick Start
 -----------
-1. Install `hemlock-sendmsg` on the machine which runs Evergreen action triggers.
-2. In the [Firebase Console](https://console.firebase.google.com/), create a service account with the `cloudmessaging.messages.create` permission, create a service account key, and save it to the `hemlock-sendmsg` install directory as `service-account.json`.  For detailed instructions, see the [Setup Guide to Push Notifications](https://github.com/kenstir/hemlock/blob/feat/pn/docs/setup-guide-to-push-notifications.md).
+1. Build and install `hemlock-sendmsg` as a systemd service on the machine which runs Evergreen action triggers.
+```bash
+make && sudo make install
+```
+2. Copy the Firebase service account key to the `hemlock-sendmsg` directory as `service-account.json`.  For detailed instructions, see the [Setup Guide to Push Notifications](https://github.com/kenstir/hemlock/blob/feat/pn/docs/setup-guide-to-push-notifications.md).
 3. Start the server
 ```bash
-$ ./hemlock-sendmsg
-2024/04/20 13:07:25 initializing firebase with credentials file service-account.json
-2024/04/20 13:07:25 listening on localhost:8842
+sudo systemctl start hemlock-sendmsg
+sudo systemctl status hemlock-sendmsg
 ```
 
 Detailed Usage
