@@ -1,5 +1,7 @@
 *~
 /hemlock-sendmsg
 /hemlock-sendmsg.exe
+/secrets/*
 /service-account*
 .DS_Store
+.vscode/
