@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -19,8 +18,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-/// Custom keys sent in the Data payload.
-/// Do not change these, they are embedded in the Hemlock apps.
+// Custom keys sent in the Data payload.
+// Do not change these, they are embedded in the Hemlock apps.
 const HemlockNotificationTypeKey = "hemlock.t"
 const HemlockNotificationUsernameKey = "hemlock.u"
 
@@ -30,10 +29,10 @@ const HemlockNotificationUsernameKey = "hemlock.u"
 // * hemlock-sendmsg:   sendmsg.go
 var HemlockNotificationTypes = map[string]bool{
 	"checkouts": true,
-	"fines": true,
-	"general": true,
-	"holds": true,
-	"pmc": true,
+	"fines":     true,
+	"general":   true,
+	"holds":     true,
+	"pmc":       true,
 }
 
 type ServiceData struct {
@@ -42,7 +41,7 @@ type ServiceData struct {
 	notificationsSent *prometheus.CounterVec
 }
 
-/// categorize the result of sendMessage and record metric
+// categorize the result of sendMessage and record metric
 func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) {
 	httpStatusCode := http.StatusOK
 	result := "ok"
@@ -73,7 +72,7 @@ func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) 
 	return result, httpStatusCode
 }
 
-/// send a notification
+// send a notification
 func (srv *ServiceData) sendMessage(token string, title string, body string, notificationType string, username string) (string, string, int, error) {
 	// send the message
 	response := ""
@@ -81,7 +80,7 @@ func (srv *ServiceData) sendMessage(token string, title string, body string, not
 	if token != "" {
 		response, err = srv.fcmClient.Send(context.Background(), &messaging.Message{
 			Data: map[string]string{
-				HemlockNotificationTypeKey: notificationType,
+				HemlockNotificationTypeKey:     notificationType,
 				HemlockNotificationUsernameKey: username,
 			},
 			Notification: &messaging.Notification{
@@ -115,9 +114,13 @@ func requireStringParam(w http.ResponseWriter, r *http.Request, param string) (s
 func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	// get required params
 	title, err := requireStringParam(w, r, "title")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	body, err := requireStringParam(w, r, "body")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	// token is "required", but we want to keep track of requests made without one,
 	// to count users without the mobile app
@@ -137,7 +140,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Invalid type: %s", notificationType)
 			keys := make([]string, 0, len(HemlockNotificationTypes))
 			for key := range HemlockNotificationTypes {
-					keys = append(keys, key)
+				keys = append(keys, key)
 			}
 			sort.Strings(keys)
 			fmt.Fprintf(w, "; use one of {%s}\n", strings.Join(keys, ", "))
@@ -195,23 +198,18 @@ func createServiceData(credentialsFile string) (*ServiceData, error) {
 
 	// create servicedata
 	srv := &ServiceData{
-		fcmClient: fcmClient,
+		fcmClient:         fcmClient,
 		notificationsSent: notificationsSent,
 	}
 	return srv, nil
 }
 
 func main() {
-	info, _ := debug.ReadBuildInfo()
-	for _, element := range info.Settings {
-		if element.Key == "vcs.revision" {
-			slog.Info(fmt.Sprintf("starting, vcs.revision=%v", element.Value))
-		} else if element.Key == "vcs.time" {
-			slog.Info(fmt.Sprintf("starting, vcs.time=%v", element.Value))
-		} else if element.Key == "vcs.modified" {
-			slog.Info(fmt.Sprintf("starting, vcs.modified=%v", element.Value))
-		}
+	buildInfo, err := readBuildInfo()
+	if err != nil {
+		slog.Error(err.Error())
 	}
+	slog.Info(fmt.Sprintf("starting %s", buildInfo))
 
 	config := parseCommandLine()
 

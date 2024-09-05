@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Addr string // :port or addr:port to listen on
+	Addr            string // :port or addr:port to listen on
 	CredentialsFile string // path to service-account.json file
 }
 
