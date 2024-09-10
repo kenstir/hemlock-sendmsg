@@ -24,12 +24,13 @@ Use `-credentialsFile [path]` or the `GOOGLE_APPLICATION_CREDENTIALS` environmen
 
 Sending a Push Notification
 ---------------------------
-POST to /send with parameters:
-* `title` - the title of the notification
-* `body`  - the body text of the notification
-* `token` - the FCM registration token
-* `type`  - the push notification type, controls the app screen that launches when you tap the notification; {fines, general, holds, pmc, checkouts}
-* `debug` - if not empty and not "0", log the call to stdout
+POST /send with parameters:
+* `body`     - the body text of the notification
+* `title`    - the title of the notification
+* `token`    - the FCM registration token
+* `type`     - the push notification type, controls the app screen that launches when you tap the notification; {fines, general, holds, pmc, checkouts}
+* `username` - the username the patron uses to login; will be used in the future to select the correct account on devices with multiple accounts
+* `debug`    - optional; if not empty and not "0", log the call to stdout
 
 For example:
 ```bash
