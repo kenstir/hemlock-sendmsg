@@ -109,3 +109,44 @@ func TestFromJSONInvalid(t *testing.T) {
 		t.Fatal("expected error for invalid JSON")
 	}
 }
+
+func TestFromStringSingleToken(t *testing.T) {
+	ts := NewTokenStoreFromString("token-1")
+	want := 1
+	got := len(ts.Entries)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+}
+
+func TestFromStringJSONSingleToken(t *testing.T) {
+	ts := NewTokenStoreFromString(`{"tokens":[{"tok":"token-1","added_at":"2026-04-09T13:15:00Z"}]}`)
+	want := 1
+	got := len(ts.Entries)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+}
+
+func TestFromStringJSONMultipleTokens(t *testing.T) {
+	ts := NewTokenStoreFromString(`{"tokens":[{"tok":"token-1","added_at":"2026-04-08T13:15:00Z"},{"tok":"token-2","added_at":"2026-04-09T13:16:00Z"}]}`)
+	want := 2
+	got := len(ts.Entries)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+}
+
+func TestFromStringThatLooksLikeJSON(t *testing.T) {
+	ts := NewTokenStoreFromString("{xyzzy}")
+	want := 1
+	got := len(ts.Entries)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+	token := ts.Entries[0].Token
+	wantToken := "{xyzzy}"
+	if diff := cmp.Diff(wantToken, token); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+}

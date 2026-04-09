@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,12 @@ func NewTokenStore() *TokenStore {
 	return &TokenStore{
 		Entries: make([]TokenEntry, 0, MaxEntries),
 	}
+}
+
+func NewTokenStoreFromString(str string) *TokenStore {
+	ts := NewTokenStore()
+	ts.FromString(str)
+	return ts
 }
 
 func (cm *TokenStore) AddToken(token string) {
@@ -51,4 +58,18 @@ func (cm *TokenStore) ToJSON() ([]byte, error) {
 
 func (cm *TokenStore) FromJSON(data []byte) error {
 	return json.Unmarshal(data, cm)
+}
+
+// FromString creates a TokenStore from a string, which might be a single string token or a JSON object.
+func (cm *TokenStore) FromString(str string) {
+	// if it looks like a JSON object, try to parse it
+	if strings.HasPrefix(str, "{") && strings.HasSuffix(str, "}") {
+		err := cm.FromJSON([]byte(str))
+		if err == nil {
+			return
+		}
+	}
+
+	// treat it as a single token string
+	cm.AddToken(str)
 }
