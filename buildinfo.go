@@ -7,6 +7,17 @@ import (
 	"runtime/debug"
 )
 
+// If built by goreleaser, these variables are set at release time using -ldflags.
+// Otherwise, they are set by readBuildInfo.
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = ""
+	builtBy = ""
+)
+
+var programName = "hemlock-sendmsg"
+
 func safeSubstr(str string, length int) string {
 	if len(str) >= length {
 		return str[:length]
@@ -22,26 +33,28 @@ func readBuildInfo() (string, error) {
 	}
 	programName := filepath.Base(execPath)
 
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "", fmt.Errorf("ReadBuildInfo failed")
-	}
+	if builtBy != "goreleaser" {
+		info, ok := debug.ReadBuildInfo()
+		if !ok {
+			return "", fmt.Errorf("ReadBuildInfo failed")
+		}
 
-	vcs_modified := ""
-	vcs_rev := ""
-	vcs_time := ""
-	for _, element := range info.Settings {
-		if element.Key == "vcs.revision" {
-			vcs_rev = safeSubstr(element.Value, 8)
-		} else if element.Key == "vcs.time" {
-			vcs_time = safeSubstr(element.Value, 10)
-		} else if element.Key == "vcs.modified" {
-			if element.Value == "true" {
-				vcs_modified = "(LOCALLY MODIFIED)"
-			} else {
-				vcs_modified = ""
+		vcsModified := false
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				commit = safeSubstr(setting.Value, 8)
+			case "vcs.time":
+				date = safeSubstr(setting.Value, 10)
+			case "vcs.modified":
+				vcsModified = setting.Value == "true"
 			}
 		}
+
+		if vcsModified {
+			commit = "locally_modified"
+		}
 	}
-	return fmt.Sprintf("%s date=%s commit=%s %s", programName, vcs_time, vcs_rev, vcs_modified), nil
+
+	return fmt.Sprintf("%s version=%s date=%s commit=%s", programName, version, date, commit), nil
 }
