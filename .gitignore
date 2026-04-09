@@ -1,4 +1,5 @@
 *~
+/dist/
 /hemlock-sendmsg
 /hemlock-sendmsg.exe
 /secrets/*

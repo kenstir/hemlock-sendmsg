@@ -168,7 +168,7 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
-	// sanity check that credentialsFile is present, else you get an unhelpful error
+	// check that credentialsFile is present, else you get an unhelpful error
 	if _, err := os.Stat(credentialsFile); err != nil {
 		return nil, err
 	}

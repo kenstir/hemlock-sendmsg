@@ -9,3 +9,7 @@ install:
 		> /etc/systemd/system/hemlock-sendmsg.service
 	systemctl daemon-reload
 	systemctl enable hemlock-sendmsg
+
+.PHONY: snapshot
+snapshot:
+	goreleaser release --snapshot --clean
