@@ -7,16 +7,13 @@ import (
 	"runtime/debug"
 )
 
-// If built by goreleaser, these variables are set at release time using -ldflags.
-// Otherwise, they are set by readBuildInfo.
+// If built by goreleaser, these variables are set by goreleaser using -ldflags.
 var (
 	version = "dev"
 	commit  = "unknown"
 	date    = ""
 	builtBy = ""
 )
-
-var programName = "hemlock-sendmsg"
 
 func safeSubstr(str string, length int) string {
 	if len(str) >= length {
@@ -50,7 +47,6 @@ func readBuildInfo() (string, error) {
 				vcsModified = setting.Value == "true"
 			}
 		}
-
 		if vcsModified {
 			commit = "locally_modified"
 		}
