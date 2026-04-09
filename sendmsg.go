@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/errorutils"
@@ -35,17 +36,23 @@ var HemlockNotificationTypes = map[string]bool{
 	"pmc":       true,
 }
 
+var (
+	ErrEmptyToken   = fmt.Errorf("empty token")
+	ErrExpiredToken = fmt.Errorf("token too old")
+)
+
 type ServiceData struct {
 	fcmClient *messaging.Client
 
 	notificationsSent *prometheus.CounterVec
 }
 
-// categorize the result of sendMessage and record metric
-func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) {
-	httpStatusCode := http.StatusOK
-	result := "ok"
-	if token == "" {
+// determine the HTTP status code for the response, and a result label for the measurement
+func (srv *ServiceData) sendMessageResult(err error) (result string, httpStatusCode int) {
+	if err == nil {
+		httpStatusCode = http.StatusOK
+		result = "ok"
+	} else if err == ErrEmptyToken {
 		httpStatusCode = http.StatusBadRequest
 		result = "EmptyToken"
 	} else if err != nil {
@@ -68,16 +75,20 @@ func (srv *ServiceData) trackSendMessage(token string, err error) (string, int) 
 			result = "UnknownError"
 		}
 	}
-	srv.notificationsSent.WithLabelValues(result).Inc()
 	return result, httpStatusCode
 }
 
 // send a notification
-func (srv *ServiceData) sendMessage(token string, title string, body string, notificationType string, username string) (string, string, int, error) {
+func (srv *ServiceData) sendMessage(entry TokenEntry, title string, body string, notificationType string, username string) (string, string, int, error) {
 	// send the message
 	response := ""
 	var err error = nil
-	if token != "" {
+	cutoff := time.Now().UTC().Add(-365 * 24 * time.Hour)
+	if entry.Token == "" {
+		err = ErrEmptyToken
+	} else if entry.AddedAt.Before(cutoff) {
+		err = ErrExpiredToken
+	} else {
 		response, err = srv.fcmClient.Send(context.Background(), &messaging.Message{
 			Data: map[string]string{
 				HemlockNotificationTypeKey:     notificationType,
@@ -92,10 +103,11 @@ func (srv *ServiceData) sendMessage(token string, title string, body string, not
 					ChannelID: notificationType,
 				},
 			},
-			Token: token,
+			Token: entry.Token,
 		})
 	}
-	result, httpStatusCode := srv.trackSendMessage(token, err)
+	result, httpStatusCode := srv.sendMessageResult(err)
+	srv.notificationsSent.WithLabelValues(result).Inc()
 	return response, result, httpStatusCode, err
 }
 
@@ -122,9 +134,9 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// token is "required", but we want to keep track of requests made without one,
-	// to count users without the mobile app
-	token := r.FormValue("token")
+	// tokenData is "required", but we don't report it as an error because we want to
+	// track EmptyToken requests, i.e. for users without the mobile apps
+	tokenData := r.FormValue("token")
 
 	// should be required
 	username := r.FormValue("username")
@@ -155,16 +167,21 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 		logLevel = slog.LevelInfo
 	}
 
-	// send the message
-	response, result, httpStatusCode, err := srv.sendMessage(token, title, body, notificationType, username)
-	if err != nil {
-		slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
-		w.WriteHeader(httpStatusCode)
-		fmt.Fprintf(w, "%s\n", err.Error())
-	} else {
-		fmt.Fprintf(w, "%s\n", response)
+	// v2: handle either a single token or a JSON object with multiple tokens
+	tokenStore := NewTokenStoreFromString(tokenData)
+
+	// send a message for each token
+	for _, entry := range tokenStore.Entries {
+		response, result, httpStatusCode, err := srv.sendMessage(entry, title, body, notificationType, username)
+		if err != nil {
+			slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
+			w.WriteHeader(httpStatusCode)
+			fmt.Fprintf(w, "%s\n", err.Error())
+		} else {
+			fmt.Fprintf(w, "%s\n", response)
+		}
+		slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "username", username, "title", title, "type", notificationType, "body", body, "token", entry.Token)
 	}
-	slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "username", username, "title", title, "type", notificationType, "body", body, "token", token)
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
