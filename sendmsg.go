@@ -177,19 +177,30 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 	tokenStore := NewTokenStoreFromString(tokenData)
 
 	// send a message for each token
+	var responseBody strings.Builder
+	hasError := false
+	errorStatusCode := http.StatusInternalServerError
 	for _, entry := range tokenStore.Entries {
 		response, result, httpStatusCode, err := srv.sendMessage(entry, title, body, notificationType, username)
 		if err != nil {
 			slog.Error("Failed to send notification", "result", result, "code", httpStatusCode, "err", err)
-			w.WriteHeader(httpStatusCode)
-			fmt.Fprintf(w, "%s\n", err.Error())
+			if !hasError {
+				hasError = true
+				errorStatusCode = httpStatusCode
+			}
+			fmt.Fprintf(&responseBody, "%s\n", err.Error())
 		} else {
-			fmt.Fprintf(w, "%s\n", response)
+			fmt.Fprintf(&responseBody, "%s\n", response)
 		}
 		slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path),
 			"result", result, "code", httpStatusCode, "username", username,
 			"title", title, "type", notificationType, "body", body, "token", entry.Token)
 	}
+
+	if hasError {
+		w.WriteHeader(errorStatusCode)
+	}
+	fmt.Fprint(w, responseBody.String())
 }
 
 func createServiceData(credentialsFile string) (*ServiceData, error) {
