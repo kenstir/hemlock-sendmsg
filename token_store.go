@@ -63,8 +63,9 @@ func (cm *TokenStore) FromJSON(data []byte) error {
 // FromString creates a TokenStore from a string, which might be a single string token or a JSON object.
 func (cm *TokenStore) FromString(str string) {
 	// if it looks like a JSON object, try to parse it
-	if strings.HasPrefix(str, "{") && strings.HasSuffix(str, "}") {
-		err := cm.FromJSON([]byte(str))
+	trimmed := strings.TrimSpace(str)
+	if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
+		err := cm.FromJSON([]byte(trimmed))
 		if err == nil {
 			return
 		}
