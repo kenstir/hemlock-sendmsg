@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestAddToken(t *testing.T) {
 func TestAddTooManyTokens(t *testing.T) {
 	ts := NewTokenStore()
 	for i := 0; i <= MaxEntries+1; i++ {
-		ts.AddToken("token-" + string(rune(i)))
+		ts.AddToken(fmt.Sprintf("token-%d", i))
 	}
 
 	want := MaxEntries
@@ -31,13 +32,13 @@ func TestAddTooManyTokens(t *testing.T) {
 	}
 
 	firstToken := ts.Entries[0].Token
-	wantFirst := "token-" + string(rune(2))
+	wantFirst := "token-2"
 	if diff := cmp.Diff(wantFirst, firstToken); diff != "" {
 		t.Errorf("mismatch (-want +got): %s", diff)
 	}
 
 	lastToken := ts.Entries[len(ts.Entries)-1].Token
-	wantLast := "token-" + string(rune(MaxEntries+1))
+	wantLast := fmt.Sprintf("token-%d", MaxEntries+1)
 	if diff := cmp.Diff(wantLast, lastToken); diff != "" {
 		t.Errorf("mismatch (-want +got): %s", diff)
 	}
