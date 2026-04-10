@@ -9,12 +9,12 @@ import (
 const MaxEntries = 3
 
 type TokenEntry struct {
-	Token   string    `json:"tok"`
+	Token   string    `json:"token"`
 	AddedAt time.Time `json:"added_at"`
 }
 
 type TokenStore struct {
-	Entries []TokenEntry `json:"tokens"`
+	Entries []TokenEntry `json:"entries"`
 }
 
 func NewTokenStore() *TokenStore {

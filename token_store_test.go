@@ -80,7 +80,7 @@ func TestToJSON(t *testing.T) {
 		t.Fatal("expected non-empty JSON")
 	}
 	got := string(data)
-	want := `{"tokens":[{"tok":"token-1","added_at":"2026-04-09T13:15:00Z"}]}`
+	want := `{"entries":[{"token":"token-1","added_at":"2026-04-09T13:15:00Z"}]}`
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("mismatch (-want +got): %s", diff)
 	}
@@ -121,7 +121,7 @@ func TestFromStringSingleToken(t *testing.T) {
 }
 
 func TestFromStringJSONSingleToken(t *testing.T) {
-	ts := NewTokenStoreFromString(`{"tokens":[{"tok":"token-1","added_at":"2026-04-09T13:15:00Z"}]}`)
+	ts := NewTokenStoreFromString(`{"entries":[{"token":"token-1","added_at":"2026-04-09T13:15:00Z"}]}`)
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -130,7 +130,7 @@ func TestFromStringJSONSingleToken(t *testing.T) {
 }
 
 func TestFromStringJSONMultipleTokens(t *testing.T) {
-	ts := NewTokenStoreFromString(`{"tokens":[{"tok":"token-1","added_at":"2026-04-08T13:15:00Z"},{"tok":"token-2","added_at":"2026-04-09T13:16:00Z"}]}`)
+	ts := NewTokenStoreFromString(`{"entries":[{"token":"token-1","added_at":"2026-04-08T13:15:00Z"},{"token":"token-2","added_at":"2026-04-09T13:16:00Z"}]}`)
 	want := 2
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
