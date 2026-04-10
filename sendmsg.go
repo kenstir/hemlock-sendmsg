@@ -25,6 +25,9 @@ import (
 const HemlockNotificationTypeKey = "hemlock.t"
 const HemlockNotificationUsernameKey = "hemlock.u"
 
+// Cutoff time for tokens; if a token was added before this time, we consider it expired
+const TokenExpirationCutoff = 365 * 24 * time.Hour
+
 // NB: This list of notification types (Android notification channelIds) must be kept in sync in 3 places:
 // * hemlock (android): core/src/main/java/org/evergreen_ils/data/PushNotification.kt
 // * hemlock-ios:       Source/Models/PushNotification.swift
@@ -86,7 +89,7 @@ func (srv *ServiceData) resultAndCodeFromError(err error) (result string, httpSt
 func (srv *ServiceData) sendMessage(entry TokenEntry, title string, body string, notificationType string, username string) (string, string, int, error) {
 	response := ""
 	var err error = nil
-	cutoff := time.Now().UTC().Add(-365 * 24 * time.Hour)
+	cutoff := time.Now().UTC().Add(-TokenExpirationCutoff)
 	if entry.Token == "" {
 		err = ErrEmptyToken
 	} else if entry.AddedAt.Before(cutoff) {
