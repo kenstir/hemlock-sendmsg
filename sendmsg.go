@@ -140,8 +140,8 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// tokenData is "required", but we don't report it as an error because we want to
-	// track EmptyToken requests, i.e. for users without the mobile apps
+	// tokenData is "required", but we don't require it because we want to track
+	// EmptyToken requests, i.e. notifications for users without the mobile app
 	tokenData := r.FormValue("token")
 
 	// should be required
