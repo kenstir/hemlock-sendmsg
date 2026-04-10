@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -48,39 +49,41 @@ type ServiceData struct {
 }
 
 // determine the HTTP status code for the response, and a result label for the measurement
-func (srv *ServiceData) sendMessageResult(err error) (result string, httpStatusCode int) {
+func (srv *ServiceData) resultAndCodeFromError(err error) (result string, httpStatusCode int) {
+	// handle local errors
 	if err == nil {
-		httpStatusCode = http.StatusOK
-		result = "ok"
-	} else if err == ErrEmptyToken {
-		httpStatusCode = http.StatusBadRequest
-		result = "EmptyToken"
-	} else if err != nil {
-		httpStatusCode = http.StatusInternalServerError
-		if resp := errorutils.HTTPResponse(err); resp != nil {
-			httpStatusCode = resp.StatusCode
-		}
-		result = ""
-		if messaging.IsUnregistered(err) {
-			result = "Unregistered"
-			// should remove token from db
-		} else if errorutils.IsUnavailable(err) {
-			result = "Unavailable"
-			// should retry in an hour
-		} else if messaging.IsInternal(err) {
-			result = "InternalError"
-		} else if messaging.IsInvalidArgument(err) {
-			result = "InvalidArgument"
-		} else {
-			result = "UnknownError"
-		}
+		return "ok", http.StatusOK
+	} else if errors.Is(err, ErrEmptyToken) {
+		return "EmptyToken", http.StatusBadRequest
+	} else if errors.Is(err, ErrExpiredToken) {
+		return "ExpiredToken", http.StatusBadRequest
+	}
+
+	// it's an FCM error; use the FCM response status code if available
+	httpStatusCode = http.StatusInternalServerError
+	if resp := errorutils.HTTPResponse(err); resp != nil {
+		httpStatusCode = resp.StatusCode
+	}
+
+	// determine appropriate result label for metrics
+	if messaging.IsUnregistered(err) {
+		result = "Unregistered"
+		// should remove token from db
+	} else if errorutils.IsUnavailable(err) {
+		result = "Unavailable"
+		// should retry in an hour
+	} else if messaging.IsInternal(err) {
+		result = "InternalError"
+	} else if messaging.IsInvalidArgument(err) {
+		result = "InvalidArgument"
+	} else {
+		result = "UnknownError"
 	}
 	return result, httpStatusCode
 }
 
-// send a notification
+// send one notification
 func (srv *ServiceData) sendMessage(entry TokenEntry, title string, body string, notificationType string, username string) (string, string, int, error) {
-	// send the message
 	response := ""
 	var err error = nil
 	cutoff := time.Now().UTC().Add(-365 * 24 * time.Hour)
@@ -106,7 +109,7 @@ func (srv *ServiceData) sendMessage(entry TokenEntry, title string, body string,
 			Token: entry.Token,
 		})
 	}
-	result, httpStatusCode := srv.sendMessageResult(err)
+	result, httpStatusCode := srv.resultAndCodeFromError(err)
 	srv.notificationsSent.WithLabelValues(result).Inc()
 	return response, result, httpStatusCode, err
 }
@@ -180,7 +183,9 @@ func (srv *ServiceData) sendHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fmt.Fprintf(w, "%s\n", response)
 		}
-		slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path), "result", result, "code", httpStatusCode, "username", username, "title", title, "type", notificationType, "body", body, "token", entry.Token)
+		slog.Log(r.Context(), logLevel, fmt.Sprintf("%s %s", r.Method, r.URL.Path),
+			"result", result, "code", httpStatusCode, "username", username,
+			"title", title, "type", notificationType, "body", body, "token", entry.Token)
 	}
 }
 
