@@ -89,10 +89,10 @@ func (srv *ServiceData) resultAndCodeFromError(err error) (result string, httpSt
 func (srv *ServiceData) sendMessage(entry TokenEntry, title string, body string, notificationType string, username string) (string, string, int, error) {
 	response := ""
 	var err error = nil
-	cutoff := time.Now().UTC().Add(-TokenExpirationCutoff)
+	cutoff := time.Now().UTC().Add(-TokenExpirationCutoff).Unix()
 	if entry.Token == "" {
 		err = ErrEmptyToken
-	} else if entry.AddedAt.Before(cutoff) {
+	} else if entry.AddedAt < cutoff {
 		err = ErrExpiredToken
 	} else {
 		response, err = srv.fcmClient.Send(context.Background(), &messaging.Message{

@@ -9,8 +9,8 @@ import (
 const MaxEntries = 3
 
 type TokenEntry struct {
-	Token   string    `json:"token"`
-	AddedAt time.Time `json:"added_at"`
+	Token   string `json:"token"`
+	AddedAt int64  `json:"added_at"`
 }
 
 type TokenStore struct {
@@ -32,7 +32,7 @@ func NewTokenStoreFromString(str string) *TokenStore {
 func (cm *TokenStore) AddToken(token string) {
 	cm.AddTokenEntry(TokenEntry{
 		Token:   token,
-		AddedAt: time.Now().UTC().Truncate(time.Second),
+		AddedAt: time.Now().Unix(),
 	})
 }
 
