@@ -68,7 +68,7 @@ func (ts *TokenStore) FromJSON(data []byte) error {
 func (ts *TokenStore) FromString(str string) {
 	// if it looks like a v2 encoded object, try to parse it
 	if strings.HasPrefix(str, V2EncodedTokenPrefix) {
-		decoded, err := base64.URLEncoding.DecodeString(str)
+		decoded, err := base64.RawURLEncoding.DecodeString(str)
 		if err == nil {
 			err = ts.FromJSON(decoded)
 			if err == nil {

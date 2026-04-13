@@ -12,6 +12,7 @@ func TestAddToken(t *testing.T) {
 	ts := NewTokenStore()
 	token := "test-token-1"
 	ts.AddToken(token)
+
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -113,6 +114,7 @@ func TestFromJSONInvalid(t *testing.T) {
 
 func TestFromStringSingleToken(t *testing.T) {
 	ts := NewTokenStoreFromString("token-1")
+
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -122,8 +124,9 @@ func TestFromStringSingleToken(t *testing.T) {
 
 func TestFromStringV2SingleToken(t *testing.T) {
 	json := `{"entries":[{"token":"token-1","added_at":1712664900}]}`
-	encoded := base64.URLEncoding.EncodeToString([]byte(json))
+	encoded := base64.RawURLEncoding.EncodeToString([]byte(json))
 	ts := NewTokenStoreFromString(encoded)
+
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -133,8 +136,9 @@ func TestFromStringV2SingleToken(t *testing.T) {
 
 func TestFromStringJSONMultipleTokens(t *testing.T) {
 	json := `{"entries":[{"token":"token-1","added_at":1712578500},{"token":"token-2","added_at":1712664960}]}`
-	encoded := base64.URLEncoding.EncodeToString([]byte(json))
+	encoded := base64.RawURLEncoding.EncodeToString([]byte(json))
 	ts := NewTokenStoreFromString(encoded)
+
 	want := 2
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -145,6 +149,7 @@ func TestFromStringJSONMultipleTokens(t *testing.T) {
 func TestFromStringThatLooksLikeV2(t *testing.T) {
 	str := V2EncodedTokenPrefix + "xyzzy"
 	ts := NewTokenStoreFromString(str)
+
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
