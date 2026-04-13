@@ -9,7 +9,7 @@ import (
 
 const MaxEntries = 3
 
-// prefix for all v2 encoded tokens, base64url-encoded string '{"entries":['
+// prefix on all v2 base64url-encoded tokens, which when decoded is `{"entries":[`
 const V2EncodedTokenPrefix = "eyJlbnRyaWVzIjpb"
 
 type TokenEntry struct {
