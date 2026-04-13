@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -70,15 +69,12 @@ func TestToJSON(t *testing.T) {
 	ts := NewTokenStore()
 	ts.AddTokenEntry(TokenEntry{
 		Token:   "token-1",
-		AddedAt: 1712664900, // 2024-04-09T13:15:00Z
+		AddedAt: 1712664900,
 	})
 
 	data, err := ts.ToJSON()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if len(data) == 0 {
-		t.Fatal("expected non-empty JSON")
 	}
 	got := string(data)
 	want := `{"entries":[{"token":"token-1","added_at":1712664900}]}`
@@ -122,9 +118,29 @@ func TestFromStringSingleToken(t *testing.T) {
 	}
 }
 
+func TestEncodingIsCompatible(t *testing.T) {
+	// Check that the implementation we are using is compatible with other implementations,
+	// that is, base64-url-encoding with no padding.
+	json := `{"a":"??~"}`
+	want := "eyJhIjoiPz9-In0" // plain base64 would be "eyJhIjoiPz9+In0="
+
+	encoded := V2EncodeString([]byte(json))
+	if diff := cmp.Diff(want, encoded); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+
+	decoded, err := V2DecodeString(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(json, string(decoded)); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+}
+
 func TestFromStringV2SingleToken(t *testing.T) {
 	json := `{"entries":[{"token":"token-1","added_at":1712664900}]}`
-	encoded := base64.RawURLEncoding.EncodeToString([]byte(json))
+	encoded := V2EncodeString([]byte(json))
 	ts := NewTokenStoreFromString(encoded)
 
 	want := 1
@@ -134,9 +150,9 @@ func TestFromStringV2SingleToken(t *testing.T) {
 	}
 }
 
-func TestFromStringJSONMultipleTokens(t *testing.T) {
+func TestFromStringV2MultipleTokens(t *testing.T) {
 	json := `{"entries":[{"token":"token-1","added_at":1712578500},{"token":"token-2","added_at":1712664960}]}`
-	encoded := base64.RawURLEncoding.EncodeToString([]byte(json))
+	encoded := V2EncodeString([]byte(json))
 	ts := NewTokenStoreFromString(encoded)
 
 	want := 2
