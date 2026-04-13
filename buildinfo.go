@@ -30,7 +30,10 @@ func readBuildInfo() (string, error) {
 	}
 	programName := filepath.Base(execPath)
 
-	if builtBy != "goreleaser" {
+	if builtBy == "goreleaser" {
+		commit = safeSubstr(commit, 8)
+		date = safeSubstr(date, 10)
+	} else {
 		info, ok := debug.ReadBuildInfo()
 		if !ok {
 			return "", fmt.Errorf("ReadBuildInfo failed")

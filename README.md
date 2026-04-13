@@ -58,6 +58,12 @@ where usrname='hemlock' and s.name='hemlock.push_notification_data';
 (1 row)
 ```
 
+NOTE: As of v2, the token may be a bare token or a base64url-encoded set of tokens.  If the value starts with "eyJl"
+it is likely base64url-encoded.  You can decode and pretty-print the contents with this command:
+```bash
+echo "$token" | basenc --base64url -d | jq .
+```
+
 Collecting Metrics
 ------------------
 GET /metrics

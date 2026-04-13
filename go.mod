@@ -1,4 +1,4 @@
-module kenstir.net/hemlock-sendmsg
+module github.com/kenstir/hemlock-sendmsg
 
 go 1.22.2
 
@@ -7,6 +7,8 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	google.golang.org/api v0.170.0
 )
+
+require github.com/google/go-cmp v0.6.0
 
 require (
 	cloud.google.com/go v0.112.1 // indirect
