@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"time"
 )
 
 const MaxEntries = 3
+
+// prefix for all v2 encoded tokens, base64url-encoded string '{"entries":['
+const V2EncodedTokenPrefix = "eyJlbnRyaWVzIjpb"
 
 type TokenEntry struct {
 	Token   string `json:"token"`
@@ -29,48 +33,50 @@ func NewTokenStoreFromString(str string) *TokenStore {
 	return ts
 }
 
-func (cm *TokenStore) AddToken(token string) {
-	cm.AddTokenEntry(TokenEntry{
+func (ts *TokenStore) AddToken(token string) {
+	ts.AddTokenEntry(TokenEntry{
 		Token:   token,
 		AddedAt: time.Now().Unix(),
 	})
 }
 
-func (cm *TokenStore) AddTokenEntry(entry TokenEntry) {
-	if len(cm.Entries) >= MaxEntries {
-		cm.Entries = cm.Entries[1:]
+func (ts *TokenStore) AddTokenEntry(entry TokenEntry) {
+	if len(ts.Entries) >= MaxEntries {
+		ts.Entries = ts.Entries[1:]
 	}
-	cm.Entries = append(cm.Entries, entry)
+	ts.Entries = append(ts.Entries, entry)
 }
 
-func (cm *TokenStore) FindToken(token string) *TokenEntry {
-	for i := len(cm.Entries) - 1; i >= 0; i-- {
-		if cm.Entries[i].Token == token {
-			return &cm.Entries[i]
+func (ts *TokenStore) FindToken(token string) *TokenEntry {
+	for i := len(ts.Entries) - 1; i >= 0; i-- {
+		if ts.Entries[i].Token == token {
+			return &ts.Entries[i]
 		}
 	}
 	return nil
 }
 
-func (cm *TokenStore) ToJSON() ([]byte, error) {
-	return json.Marshal(cm)
+func (ts *TokenStore) ToJSON() ([]byte, error) {
+	return json.Marshal(ts)
 }
 
-func (cm *TokenStore) FromJSON(data []byte) error {
-	return json.Unmarshal(data, cm)
+func (ts *TokenStore) FromJSON(data []byte) error {
+	return json.Unmarshal(data, ts)
 }
 
-// FromString creates a TokenStore from a string, which might be a single string token or a JSON object.
-func (cm *TokenStore) FromString(str string) {
-	// if it looks like a JSON object, try to parse it
-	trimmed := strings.TrimSpace(str)
-	if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
-		err := cm.FromJSON([]byte(trimmed))
+// FromString creates a TokenStore from a string, either a plain PN token (v1) or a base64url-encoded JSON TS object (v2).
+func (ts *TokenStore) FromString(str string) {
+	// if it looks like a v2 encoded object, try to parse it
+	if strings.HasPrefix(str, V2EncodedTokenPrefix) {
+		decoded, err := base64.URLEncoding.DecodeString(str)
 		if err == nil {
-			return
+			err = ts.FromJSON(decoded)
+			if err == nil {
+				return
+			}
 		}
 	}
 
 	// treat it as a single token string
-	cm.AddToken(str)
+	ts.AddToken(str)
 }

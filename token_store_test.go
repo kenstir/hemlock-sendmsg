@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -119,8 +120,10 @@ func TestFromStringSingleToken(t *testing.T) {
 	}
 }
 
-func TestFromStringJSONSingleToken(t *testing.T) {
-	ts := NewTokenStoreFromString(`{"entries":[{"token":"token-1","added_at":1712664900}]}`)
+func TestFromStringV2SingleToken(t *testing.T) {
+	json := `{"entries":[{"token":"token-1","added_at":1712664900}]}`
+	encoded := base64.URLEncoding.EncodeToString([]byte(json))
+	ts := NewTokenStoreFromString(encoded)
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -129,7 +132,9 @@ func TestFromStringJSONSingleToken(t *testing.T) {
 }
 
 func TestFromStringJSONMultipleTokens(t *testing.T) {
-	ts := NewTokenStoreFromString(`{"entries":[{"token":"token-1","added_at":1712578500},{"token":"token-2","added_at":1712664960}]}`)
+	json := `{"entries":[{"token":"token-1","added_at":1712578500},{"token":"token-2","added_at":1712664960}]}`
+	encoded := base64.URLEncoding.EncodeToString([]byte(json))
+	ts := NewTokenStoreFromString(encoded)
 	want := 2
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -137,16 +142,16 @@ func TestFromStringJSONMultipleTokens(t *testing.T) {
 	}
 }
 
-func TestFromStringThatLooksLikeJSON(t *testing.T) {
-	ts := NewTokenStoreFromString("{xyzzy}")
+func TestFromStringThatLooksLikeV2(t *testing.T) {
+	str := V2EncodedTokenPrefix + "xyzzy"
+	ts := NewTokenStoreFromString(str)
 	want := 1
 	got := len(ts.Entries)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("mismatch (-want +got): %s", diff)
 	}
 	token := ts.Entries[0].Token
-	wantToken := "{xyzzy}"
-	if diff := cmp.Diff(wantToken, token); diff != "" {
+	if diff := cmp.Diff(str, token); diff != "" {
 		t.Errorf("mismatch (-want +got): %s", diff)
 	}
 }
