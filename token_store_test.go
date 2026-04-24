@@ -108,16 +108,6 @@ func TestFromJSONInvalid(t *testing.T) {
 	}
 }
 
-func TestFromStringSingleToken(t *testing.T) {
-	ts := NewTokenStoreFromString("token-1")
-
-	want := 1
-	got := len(ts.Entries)
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("mismatch (-want +got): %s", diff)
-	}
-}
-
 func TestEncodingIsCompatible(t *testing.T) {
 	// Check that the implementation we are using is compatible with other implementations,
 	// that is, base64-url-encoding with no padding.
@@ -134,6 +124,16 @@ func TestEncodingIsCompatible(t *testing.T) {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(json, string(decoded)); diff != "" {
+		t.Errorf("mismatch (-want +got): %s", diff)
+	}
+}
+
+func TestFromStringV1SingleToken(t *testing.T) {
+	ts := NewTokenStoreFromString("token-1")
+
+	want := 1
+	got := len(ts.Entries)
+	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("mismatch (-want +got): %s", diff)
 	}
 }
